@@ -91,6 +91,7 @@ public class Record extends AppCompatActivity {
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
     private ArrayList<Integer> pkgIDs = new ArrayList<>();
+    private ArrayList<Integer> pkgsLost = new ArrayList<>();
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -848,9 +849,10 @@ public class Record extends AppCompatActivity {
             for (int datapoint : data) data_trans.add((datapoint * numerator) / denominator);
         } else {
             pkgIDs.add(data[0]); // store pkg ID
-            int[] dataNoID = new int[data.length - 1]; // array without the pkg id slot
+            pkgsLost.add(data[data.length - 1]); // store pkgs lost internally since last pkg
+            int[] dataNoID = new int[data.length - 2]; // array without the pkgIDs and pkgs Lost
             // copy the array without the pkg id
-            System.arraycopy(data, 1, dataNoID, 0, data.length - 1);
+            System.arraycopy(data, 1, dataNoID, 0, data.length - 2);
 //            for (int datapoint : dataNoID) data_trans.add((float) datapoint); // for testing raw data
             for (int datapoint : dataNoID) data_trans.add(datapoint * (298 / (1000000 * gain)));
         }
@@ -1177,7 +1179,7 @@ public class Record extends AppCompatActivity {
         final String top_header = "Username, User ID, Session ID,Session Tag,Date,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
-        final String dp_header = "Pkg ID,Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
+        final String dp_header = "Pkg ID,Pkg Loss,Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
         final UUID id = UUID.randomUUID();
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         final char delimiter = ',';
@@ -1227,6 +1229,8 @@ public class Record extends AppCompatActivity {
                 fileWriter.append(break_line);
                 for (int i = 0; i < rows; i++) {
                     fileWriter.append(String.valueOf(pkgIDs.get(i)));
+                    fileWriter.append(delimiter);
+                    fileWriter.append(String.valueOf(pkgsLost.get(i)));
                     fileWriter.append(delimiter);
                     fileWriter.append(String.valueOf(dp_received.get(i)));
                     fileWriter.append(delimiter);
