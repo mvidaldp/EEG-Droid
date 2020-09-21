@@ -129,20 +129,10 @@ public class BluetoothLeService extends Service {
         final Intent intent = new Intent(action);
         final byte[] data = characteristic.getValue();
         if (data != null && data.length > 0) {
-            // Temporary log for debugging
-            String datastring = Arrays.toString(data);
-            Log.d(TAG, "Uncompressed bytes:" + datastring);
             //We have to decompress the EEG-Data here. This is done by TraumschreiberService.decompress();
             int[] data_int = TraumschreiberService.decompress(data, newTraumschreiber);
             final StringBuilder stringBuilder = new StringBuilder(data.length);
-            //log incoming data:
-            StringBuilder stringBuilder1 = new StringBuilder(data_int.length);
-            for (int datapoint : data_int)
-                stringBuilder1.append(String.format("%+06d ", datapoint));
-            Log.d(TAG, "Received EEG Signal " + stringBuilder1.toString());
-            stringBuilder.append(stringBuilder1.toString());
             intent.putExtra(EXTRA_DATA, data_int);
-            //Log.d(TAG, "Received EEG Signal " + stringBuilder.toString());
         }
         sendBroadcast(intent);
     }
