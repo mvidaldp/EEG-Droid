@@ -90,6 +90,14 @@ public class Record extends AppCompatActivity {
     private boolean mNewDevice;
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
+    private ArrayList<BluetoothGattCharacteristic> notifyingCharacteristics = new ArrayList<>();
+    private ArrayList<String> notifyingUUIDs = new ArrayList<String>() {
+        {
+            add("0000ee60-0000-1000-8000-00805f9b34fb");
+            add("0000ee61-0000-1000-8000-00805f9b34fb");
+            add("0000ee62-0000-1000-8000-00805f9b34fb");
+        }
+    };
     private ArrayList<Integer> pkgIDs = new ArrayList<>();
     private ArrayList<Integer> pkgsLost = new ArrayList<>();
     // Code to manage Service lifecycle.
@@ -647,13 +655,13 @@ public class Record extends AppCompatActivity {
         MenuItem menuItemNotify = menu.findItem(R.id.notify);
         if (!notifying) {
             notifying = true;
-            readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
             menuItemNotify.setIcon(R.drawable.ic_notifications_active_blue_24dp);
         } else {
             notifying = false;
-            readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
             menuItemNotify.setIcon(R.drawable.ic_notifications_off_white_24dp);
         }
+
+        mBluetoothLeService.setCharacteristicNotification(mNotifyCharacteristic, notifying);
     }
 
     @Override
@@ -763,6 +771,7 @@ public class Record extends AppCompatActivity {
         }
     }
 
+    // Discovers services and characteristics
     private void readGattCharacteristic(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid;
@@ -770,37 +779,48 @@ public class Record extends AppCompatActivity {
         // Loops through available GATT Services.
         for (BluetoothGattService gattService : gattServices) {
             uuid = gattService.getUuid().toString();
-            // for the new Traumschreiber the uuid is "00000ee6-0000-1000-8000-00805f9b34fb"
+
+            // If we find the right service..
             if ((!mNewDevice && uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) || (mNewDevice && uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb"))) {
                 List<BluetoothGattCharacteristic> gattCharacteristics =
                         gattService.getCharacteristics();
-                // Loops through available Characteristics.
+
+                // Loop through all characteristics of the service
                 for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-                    final int charaProp = gattCharacteristic.getProperties();
                     charUuid = gattCharacteristic.getUuid().toString();
-                    if ((!mNewDevice && charUuid.equals("faa7b588-19e5-f590-0545-c99f193c5c3e")) || (mNewDevice && charUuid.equals("0000e617-0000-1000-8000-00805f9b34fb"))) {
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
-                                        mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
-                            }
-                            mNotifyCharacteristic = gattCharacteristic;
-                            // hack for reconnection and in case of notification set to true
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    gattCharacteristic, false);
-                            // normal setCharNotification call
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    gattCharacteristic, notifying);
-                            if (notifying)
-                                mBluetoothLeService.readCharacteristic(gattCharacteristic, mNewDevice);
-                        }
+
+                    // If the characteristic is a notifying characteristic
+                    if ((!mNewDevice && charUuid.equals("faa7b588-19e5-f590-0545-c99f193c5c3e"))
+                            || notifyingUUIDs.contains(charUuid)) {
+
+                            notifyingCharacteristics.add(gattCharacteristic);
+                            mNotifyCharacteristic = gattCharacteristic; // store the last one here.
                     }
                 }
+                prepareNotifications();
             }
         }
     }
 
+    private void prepareNotifications(){
+        // set notifications of all notifyingCharacteristics except the one used for toggling.
+        for(BluetoothGattCharacteristic characteristic : notifyingCharacteristics){
+
+            // Wait until setting the previous notification was successful
+            while(mBluetoothLeService.isBusy) {
+
+                Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    public void run() {
+                        Log.d(TAG, "Waiting for notification descriptor write to finish.");
+                    }
+                }, 300);
+            }
+            if (characteristic != mNotifyCharacteristic){
+                mBluetoothLeService.setCharacteristicNotification(characteristic, true);
+            }
+        }
+    }
     private void clearUI() {
         mCh1.setText("");
         mCh2.setText("");

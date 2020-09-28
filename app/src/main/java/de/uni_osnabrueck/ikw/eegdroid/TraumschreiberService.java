@@ -35,11 +35,11 @@ public class TraumschreiberService {
      */
     public static int[] decompress(byte[] data_bytes, boolean newModel) {
         // Log Compressed Values
-        String data_string = "";
+        /*String data_string = "";
         for (byte b: data_bytes) { data_string += String.format("%02X ", b); }
-        Log.d(TAG, "Compressed: " + data_string);
-
-
+        Log.v(TAG, "Compressed: " + data_string);
+        */
+        newModel = true;
         int[] data_ints;
         int new_int;
         int bLen = newModel ? 3 : 2; // byte length per datapoint
@@ -71,9 +71,12 @@ public class TraumschreiberService {
             }
         }
         // Log Decompressed Values
-        data_string = "";
+        /*data_string = "";
         for (int n: data_ints) { data_string += Integer.toString(n) + " "; }
-        Log.d(TAG, "Decompressed " + data_string);
+        Log.v(TAG, "Decompressed " + data_string);
+        */
+
         return data_ints;
+
     }
 }
