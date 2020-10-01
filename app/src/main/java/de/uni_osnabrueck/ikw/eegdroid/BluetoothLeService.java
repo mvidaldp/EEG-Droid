@@ -139,7 +139,8 @@ public class BluetoothLeService extends Service {
         final byte[] data = characteristic.getValue();
         if (data != null && data.length > 0) {
             //We have to decompress the EEG-Data here. This is done by TraumschreiberService.decompress();
-            int[] data_int = TraumschreiberService.decompress(data, newTraumschreiber);
+            int characteristicNumber = Integer.parseInt(characteristic.getUuid().toString().substring(7,8));
+            int[] data_int = TraumschreiberService.decompress(data, newTraumschreiber, characteristicNumber);
             final StringBuilder stringBuilder = new StringBuilder(data.length);
             intent.putExtra(EXTRA_DATA, data_int);
         }
@@ -316,5 +317,8 @@ public class BluetoothLeService extends Service {
         }
     }
 
-
+    public void setNewTraumschreiber(boolean newDevice){
+        Log.d(TAG, "Set newTraumschreiber called");
+        newTraumschreiber = newDevice;
+    }
 }

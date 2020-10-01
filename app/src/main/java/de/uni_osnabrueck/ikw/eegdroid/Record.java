@@ -805,7 +805,7 @@ public class Record extends AppCompatActivity {
     private void prepareNotifications(){
         // set notifications of all notifyingCharacteristics except the one used for toggling.
         for(BluetoothGattCharacteristic characteristic : notifyingCharacteristics){
-
+            mBluetoothLeService.setNewTraumschreiber(mNewDevice);
             // Wait until setting the previous notification was successful
             while(mBluetoothLeService.isBusy) {
 
