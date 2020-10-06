@@ -136,6 +136,7 @@ public class Record extends AppCompatActivity {
     private int ch6_color;
     private int ch7_color;
     private int ch8_color;
+    //private int[] ch_colors;
     private boolean show_ch1 = true;
     private boolean show_ch2 = true;
     private boolean show_ch3 = true;
@@ -144,6 +145,7 @@ public class Record extends AppCompatActivity {
     private boolean show_ch6 = true;
     private boolean show_ch7 = true;
     private boolean show_ch8 = true;
+    //private boolean[] show_ch;
     private int enabledCheckboxes = 8;
     private TextView mCh1;
     private TextView mCh2;
@@ -153,6 +155,7 @@ public class Record extends AppCompatActivity {
     private TextView mCh6;
     private TextView mCh7;
     private TextView mCh8;
+    //private TextView[] mChs;
     private CheckBox chckbx_ch1;
     private CheckBox chckbx_ch2;
     private CheckBox chckbx_ch3;
@@ -161,6 +164,7 @@ public class Record extends AppCompatActivity {
     private CheckBox chckbx_ch6;
     private CheckBox chckbx_ch7;
     private CheckBox chckbx_ch8;
+    //private CheckBox[] checkBoxes;
     private TextView mXAxis;
     private TextView mDataResolution;
     private Spinner gain_spinner;
@@ -449,6 +453,8 @@ public class Record extends AppCompatActivity {
 
         viewDeviceAddress = findViewById(R.id.device_address);
         mConnectionState = findViewById(R.id.connection_state);
+
+        // for (channel mch in mChs)
         mCh1 = findViewById(R.id.ch1);
         mCh2 = findViewById(R.id.ch2);
         mCh3 = findViewById(R.id.ch3);
@@ -465,6 +471,7 @@ public class Record extends AppCompatActivity {
         mCh6.setTextColor(ch6_color);
         mCh7.setTextColor(ch7_color);
         mCh8.setTextColor(ch8_color);
+        // for (checkbox checkBox in checkBoxes)
         chckbx_ch1 = findViewById(R.id.checkBox_ch1);
         chckbx_ch2 = findViewById(R.id.checkBox_ch2);
         chckbx_ch3 = findViewById(R.id.checkBox_ch3);
@@ -835,6 +842,8 @@ public class Record extends AppCompatActivity {
     }
 
     private void enableCheckboxes() {
+        // for checkbox in checkbox
+
         chckbx_ch1.setEnabled(true);
         chckbx_ch2.setEnabled(true);
         chckbx_ch3.setEnabled(true);
@@ -846,6 +855,8 @@ public class Record extends AppCompatActivity {
     }
 
     private void disableCheckboxes() {
+        // for checkbox in checkbox
+
         chckbx_ch1.setEnabled(false);
         chckbx_ch2.setEnabled(false);
         chckbx_ch3.setEnabled(false);
@@ -952,6 +963,7 @@ public class Record extends AppCompatActivity {
         bottomAxis.setTextColor(Color.GRAY);
     }
 
+    // for checkbox in checkbox
     private LineDataSet createSet1(ArrayList<Entry> le, boolean show) {
         LineDataSet set1 = new LineDataSet(le, "Ch-1");
         set1.setAxisDependency(YAxis.AxisDependency.LEFT);
@@ -1136,6 +1148,7 @@ public class Record extends AppCompatActivity {
                 channel++;
             }
         }
+
         // include this part to make the axis symmetric (0 always visible in the middle)
         if (max < min * -1) max = min * -1;
         min = max * -1;
@@ -1186,18 +1199,26 @@ public class Record extends AppCompatActivity {
     }
 
     //Saves the data at the end of session
+    @SuppressLint("DefaultLocale")
     private void saveSession(final String tag) {
         final String username = getSharedPreferences("userPreferences", 0).getString("username", "user");
         final String userID = getSharedPreferences("userPreferences", 0).getString("userID", "12345678");
         final String top_header = "Username, User ID, Session ID,Session Tag,Date,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
-        final String dp_header = "Pkg ID,Pkg Loss,Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
+
+        //final String dp_header = "Pkg ID,Pkg Loss,Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
         final UUID id = UUID.randomUUID();
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
         final char delimiter = ',';
         final char break_line = '\n';
-        new Thread(() -> {
+
+        int rows = main_data.size();
+        int cols = main_data.get(0).length;
+        final StringBuilder header = new StringBuilder();
+        for(int i=1;i<cols;i++) header.append(String.format("Ch-%d,", i));
+        header.append(String.format("Ch-%d", cols));
+            new Thread(() -> {
             try {
                 File formatted = new File(MainActivity.getDirSessions(),
                         date + "_" + tag + ".csv");
@@ -1205,8 +1226,6 @@ public class Record extends AppCompatActivity {
                 if (!formatted.exists()) //noinspection ResultOfMethodCallIgnored
                     formatted.createNewFile();
                 FileWriter fileWriter = new FileWriter(formatted);
-                int rows = main_data.size();
-                int cols = main_data.get(0).length;
                 fileWriter.append(top_header);
                 fileWriter.append(break_line);
                 fileWriter.append(username);
@@ -1238,15 +1257,15 @@ public class Record extends AppCompatActivity {
                 fileWriter.append(Long.toString(end_timestamp));
                 fileWriter.append(delimiter);
                 fileWriter.append(break_line);
-                fileWriter.append(dp_header);
+                fileWriter.append(header.toString());
                 fileWriter.append(break_line);
                 for (int i = 0; i < rows; i++) {
-                    fileWriter.append(String.valueOf(pkgIDs.get(i)));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(pkgsLost.get(i)));
-                    fileWriter.append(delimiter);
-                    fileWriter.append(String.valueOf(dp_received.get(i)));
-                    fileWriter.append(delimiter);
+                    //fileWriter.append(String.valueOf(pkgIDs.get(i)));
+                    //fileWriter.append(delimiter);
+                    //fileWriter.append(String.valueOf(pkgsLost.get(i)));
+                    //fileWriter.append(delimiter);
+                    //fileWriter.append(String.valueOf(dp_received.get(i)));
+                    //fileWriter.append(delimiter);
                     for (int j = 0; j < cols; j++) {
                         fileWriter.append(String.valueOf(main_data.get(i)[j]));
                         fileWriter.append(delimiter);
