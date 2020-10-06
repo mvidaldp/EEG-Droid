@@ -147,7 +147,7 @@ public class TraumschreiberService {
             data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xff) >> 2);
             data[idx+3] = ((bytes[i+3]&0x03) << 8) | ((bytes[i+4]&0xff) >> 0);
         }
-        // -1024 is bit mask used to turn unsigned 10bit ints into signed ints
+        // -1024 turns unsigned 10bits into their signed 2's complement
         for(int i=0; i<data.length; i++){ if(data[i] > 511) data[i] -= 1024; }
 
         return data;
