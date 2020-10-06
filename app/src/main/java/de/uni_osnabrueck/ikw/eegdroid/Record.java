@@ -868,15 +868,8 @@ public class Record extends AppCompatActivity {
             float denominator = gain * precision;
             for (int datapoint : data) data_trans.add((datapoint * numerator) / denominator);
         } else {
-            pkgIDs.add(data[0]); // store pkg ID
-            pkgsLost.add(data[data.length - 1]); // store pkgs lost internally since last pkg
-            int[] dataNoID = new int[data.length - 2]; // array without the pkgIDs and pkgs Lost
-            // copy the array without the pkg id
-            System.arraycopy(data, 1, dataNoID, 0, data.length - 2);
-//            for (int datapoint : dataNoID) data_trans.add((float) datapoint); // for testing raw data
-            for (int datapoint : dataNoID) data_trans.add(datapoint * (298 / (1000000 * gain)));
+            for (float datapoint : data) data_trans.add(datapoint);
         }
-//        for (int datapoint : data) data_trans.add((float) datapoint); // for testing raw data
         return data_trans;
     }
 
