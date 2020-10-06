@@ -2,39 +2,32 @@ package de.uni_osnabrueck.ikw.eegdroid;
 
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 
 public class TraumschreiberService {
-
-
     public final static String DEVICE_NAME = "traumschreiber";
-    //Names chosen according to the python tflow_edge Traumschreiber.py
-    public final static UUID BIOSIGNALS_UUID = UUID.fromString("faa7b588-19e5-f590-0545-c99f193c5c3e");
-    public final static UUID LEDS_UUID = UUID.fromString("fcbea85a-4d87-18a2-2141-0d8d2437c0a4");
-    String mTraumschreiberDeviceAddress;
-    private byte[] dpcmBuffer = byte[30];
-    private boolean dpcmBufferReady = false;
-    private byte[] dpcmBuffer2 = byte[30];
-    private boolean dpcmBuffer2Ready = false;
-    private int[] previousData = int[24];
-    private boolean characteristic0Ready = false;
-    private boolean characteristic1Ready = false;
-    private boolean characteristic2Ready = false;
-    private int[] data = int[24];
     private final static String TAG = "TraumschreiberService";
 
-    // public final static UUID UUID_HEART_RATE_MEASUREMENT =
-    //       UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT);
+    public String mTraumschreiberDeviceAddress;
+    private byte[] dpcmBuffer = new byte[30];
+    private byte[] dpcmBuffer2 = new byte[30];
+    private int[] previousData = new int[24];
+    private boolean characteristic0Ready = false;
+
+    public TraumschreiberService() {
+
+    }
 
     public TraumschreiberService(String traumschreiberDeviceAddress) {
         this.mTraumschreiberDeviceAddress = traumschreiberDeviceAddress;
     }
 
+
     public static boolean isTraumschreiberDevice(String bluetoothDeviceName) {
         return bluetoothDeviceName.toLowerCase().contains(DEVICE_NAME);
     }
-
     public static boolean isNewModel(String bluetoothDeviceName) {
         return bluetoothDeviceName.startsWith("T");
     }
@@ -47,21 +40,10 @@ public class TraumschreiberService {
      */
     public int[] decompress(byte[] data_bytes, boolean newModel, int characteristicNumber) {
 
-        // Log Compressed Values
-        String data_string = "";
-        /*
-        for (byte b: data_bytes) { data_string += String.format("%02X ", b); }
-        Log.v(TAG, "Compressed: " + data_string);
-        */
-
         boolean dpcmEncoded = true;
-
-
         int[] data_ints;
         int new_int;
-        int bLen = newModel ? 3 : 2; // byte length per datapoint
-
-
+        int bLen = newModel ? 3 : 2; // bytes needed to encode 1 int (old encodings)
         // ____OLD TRAUMSCHREIBER ____
         if (!newModel) {
             data_ints = new int[data_bytes.length / bLen];
@@ -97,50 +79,79 @@ public class TraumschreiberService {
 
             // ____ DPCM DECODING ____
         } else {
-            if(characteristicNumber == 0){
-                // Write data_bytes to positions 0-19 on dpcmBuffer
-                for (int i=0; i<data_bytes.length; i++){
-                    dpcmBuffer[i] = data_bytes[i];
-                }
+            if (characteristicNumber == 0){
+                System.arraycopy(data_bytes,0,dpcmBuffer,0,20);
                 characteristic0Ready = true;
+                data_ints = null;
+                return data_ints;
 
             } else if (characteristic0Ready && characteristicNumber == 1){
-                // Split data_bytes in half,
-                // write first half to positions 20-29 on dpcmBuffer,
-                // write second half to positions 0-9 on dpcmBuffer2
-                for (int i=0; i<data_bytes.length; i++){
-                    if (i < data_bytes.length/2) {
-                        dpcmBuffer[20 + i] = data_bytes[i];
-                    } else {
-                        dpcmBuffer2[i - 10] = data_bytes[i];
-                    }
-                }
-                characteristic1Ready = true;
-                }
-            } else if (characteristic1Ready && characteristicNumber == 2){
-                // Write data_bytes to positions 10-29 on dpcmBuffer2
-                for (int i=0; i<data_bytes.length; i++){
-                    dpcmBuffer2[10+i] = data_bytes[i];
-                }
-                characteristic2Ready = true;
+                System.arraycopy(data_bytes,0,dpcmBuffer,20,10);
+                System.arraycopy(data_bytes,10, dpcmBuffer2, 0, 10);
+                data_ints = decodeDpcm(dpcmBuffer);
+
+            } else if (characteristic0Ready && characteristicNumber == 2){
+                System.arraycopy(data_bytes,0,dpcmBuffer2,10,20);
+                data_ints = decodeDpcm(dpcmBuffer2);
+
             } else {
-                Log.v(TAG, "No characteristic Ready.");
+                data_ints = null;
+                return data_ints;
             }
-            // Process DPCMbuffer, if they are ready
-            if (characteristic0Ready && characteristic1Ready){
-                // Do something with dpcmBuffer
-            } else if(characteristic1Ready);
 
         }
 
-        // Log Decompressed Values
-        /*
-        data_string = "";
-        for (int n: data_ints) { data_string += Integer.toString(n) + " "; }
-        Log.v(TAG, "Decompressed " + data_string);
-        */
+
 
         return data_ints;
 
     }
+
+    /***
+     * Converts bytes to ints and adds the values of the current data to the previous data.
+     * @param  bytes
+     * @return int[] data
+     */
+    public int[] decodeDpcm(byte[] bytes){
+        Log.v(TAG, "Encoded Delta: " + Arrays.toString(bytes));
+        int[] data = bytesTo10bitInts(bytes);
+        Log.v(TAG, "Decoded Delta: " + Arrays.toString(data));
+
+        for(int i=0; i<data.length; i++){
+            data[i] += previousData[i];
+        }
+
+        return data;
+
+    }
+    /***
+     * Turns an array of bytes into an array fo 10bit ints.
+     * @param bytes
+     * @return int[] data
+     */
+    public int[] bytesTo10bitInts(byte[] bytes){
+        // Number of ints : bytes*8/10 (8bits per byte and 10bits per int)
+        int[] data = new int[bytes.length*8/10];
+
+        /**
+        * Pattern repeats after 5 bytes. Therefore we process the bytes in chunks of 5.
+        * Processing 5 bytes yields 4 (10bit) ints.
+        * The index 'idx' of the resulting int array 'data' has to be adjusted at every loop step
+        * to account for the gap between the indices resulting from the 5/4 byte-to-int ratio
+        */
+        int idx = 0;
+        for(int i=0; i<=bytes.length-5; i+=5){
+            idx = i * 4/5;
+            data[idx+0] = ((bytes[i+0]&0xff) << 2) | ((bytes[i+1]&0xc0) >> 6);
+            data[idx+1] = ((bytes[i+1]&0x3f) << 4) | ((bytes[i+2]&0xf0) >> 4);
+            data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xff) >> 2);
+            data[idx+3] = ((bytes[i+3]&0x03) << 8) | ((bytes[i+4]&0xff) >> 0);
+        }
+        // -1024 is bit mask used to turn unsigned 10bit ints into signed ints
+        for(int i=0; i<data.length; i++){ if(data[i] > 511) data[i] -= 1024; }
+
+        return data;
+    }
+
+
 }
