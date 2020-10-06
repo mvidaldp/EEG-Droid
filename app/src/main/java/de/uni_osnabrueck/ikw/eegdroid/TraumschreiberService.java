@@ -144,10 +144,10 @@ public class TraumschreiberService {
             idx = i * 4/5;
             data[idx+0] = ((bytes[i+0]&0xff) << 2) | ((bytes[i+1]&0xc0) >> 6);
             data[idx+1] = ((bytes[i+1]&0x3f) << 4) | ((bytes[i+2]&0xf0) >> 4);
-            data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xff) >> 2);
+            data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xfc) >> 2);
             data[idx+3] = ((bytes[i+3]&0x03) << 8) | ((bytes[i+4]&0xff) >> 0);
         }
-        // -1024 turns unsigned 10bits into their signed 2's complement
+        // Subtracting 1024 turns unsigned 10bit ints into their 2's complement
         for(int i=0; i<data.length; i++){ if(data[i] > 511) data[i] -= 1024; }
 
         return data;
