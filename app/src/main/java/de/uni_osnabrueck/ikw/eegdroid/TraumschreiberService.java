@@ -120,6 +120,7 @@ public class TraumschreiberService {
         for(int i=0; i<data.length; i++){
             data[i] += previousData[i];
         }
+        System.arraycopy(data,0,previousData,0,data.length);
 
         return data;
 
