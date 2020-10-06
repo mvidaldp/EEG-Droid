@@ -62,8 +62,8 @@ public class BluetoothLeService extends Service {
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
     private TraumschreiberService mTraumschreiberService = new TraumschreiberService();
+    private int[] dataDecoded;
     private boolean newTraumschreiber = false;
-    private boolean characteristicSet = false;
     public boolean isBusy = false;
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -141,11 +141,10 @@ public class BluetoothLeService extends Service {
         if (data != null && data.length > 0) {
             //We have to decompress the EEG-Data here. This is done by TraumschreiberService.decompress();
             int characteristicNumber = Integer.parseInt(characteristic.getUuid().toString().substring(7,8));
-            int[] data_int = mTraumschreiberService.decompress(data, newTraumschreiber, characteristicNumber);
-            final StringBuilder stringBuilder = new StringBuilder(data.length);
-            intent.putExtra(EXTRA_DATA, data_int);
+            dataDecoded = mTraumschreiberService.decompress(data, newTraumschreiber, characteristicNumber);
+            if(dataDecoded != null) intent.putExtra(EXTRA_DATA, dataDecoded);
         }
-        sendBroadcast(intent);
+        if(dataDecoded != null) sendBroadcast(intent);
     }
 
     @Override
