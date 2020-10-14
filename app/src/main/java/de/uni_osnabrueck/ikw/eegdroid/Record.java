@@ -25,6 +25,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -99,7 +100,6 @@ public class Record extends AppCompatActivity {
         }
     };
     private ArrayList<Integer> pkgIDs = new ArrayList<>();
-    private ArrayList<Integer> pkgsLost = new ArrayList<>();
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -128,43 +128,16 @@ public class Record extends AppCompatActivity {
     private float res_time;
     private float res_freq;
     private int cnt = 0;
+    private int nChannels = 24;
     private int ch1_color;
-    private int ch2_color;
-    private int ch3_color;
-    private int ch4_color;
-    private int ch5_color;
-    private int ch6_color;
-    private int ch7_color;
-    private int ch8_color;
-    //private int[] ch_colors;
+    private int[] channelColors = new int[nChannels];
     private boolean show_ch1 = true;
-    private boolean show_ch2 = true;
-    private boolean show_ch3 = true;
-    private boolean show_ch4 = true;
-    private boolean show_ch5 = true;
-    private boolean show_ch6 = true;
-    private boolean show_ch7 = true;
-    private boolean show_ch8 = true;
-    //private boolean[] show_ch;
+    private boolean[] channelsShown;
     private int enabledCheckboxes = 8;
-    private TextView mCh1;
-    private TextView mCh2;
-    private TextView mCh3;
-    private TextView mCh4;
-    private TextView mCh5;
-    private TextView mCh6;
-    private TextView mCh7;
-    private TextView mCh8;
-    //private TextView[] mChs;
     private CheckBox chckbx_ch1;
-    private CheckBox chckbx_ch2;
-    private CheckBox chckbx_ch3;
-    private CheckBox chckbx_ch4;
-    private CheckBox chckbx_ch5;
-    private CheckBox chckbx_ch6;
-    private CheckBox chckbx_ch7;
-    private CheckBox chckbx_ch8;
-    //private CheckBox[] checkBoxes;
+    private CheckBox[] checkBoxes = new CheckBox[nChannels];
+    private TextView mCh1;
+    private TextView[] channelValues = new TextView[nChannels];
     private TextView mXAxis;
     private TextView mDataResolution;
     private Spinner gain_spinner;
@@ -425,14 +398,6 @@ public class Record extends AppCompatActivity {
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
         setContentView(R.layout.activity_record);
 
-        ch1_color = ContextCompat.getColor(getApplicationContext(), R.color.aqua);
-        ch2_color = ContextCompat.getColor(getApplicationContext(), R.color.fuchsia);
-        ch3_color = ContextCompat.getColor(getApplicationContext(), R.color.green);
-        ch4_color = ContextCompat.getColor(getApplicationContext(), android.R.color.holo_purple);
-        ch5_color = ContextCompat.getColor(getApplicationContext(), R.color.orange);
-        ch6_color = ContextCompat.getColor(getApplicationContext(), R.color.red);
-        ch7_color = ContextCompat.getColor(getApplicationContext(), R.color.yellow);
-        ch8_color = ContextCompat.getColor(getApplicationContext(), R.color.black);
         imageButtonRecord = findViewById(R.id.imageButtonRecord);
         imageButtonSave = findViewById(R.id.imageButtonSave);
         imageButtonDiscard = findViewById(R.id.imageButtonDiscard);
@@ -450,36 +415,50 @@ public class Record extends AppCompatActivity {
 
         // Sets up UI references.
         mConnectionState = findViewById(R.id.connection_state);
-
         viewDeviceAddress = findViewById(R.id.device_address);
         mConnectionState = findViewById(R.id.connection_state);
 
-        // for (channel mch in mChs)
+        LinearLayout[] checkBoxRows = new LinearLayout[3];
+        checkBoxRows[0] = findViewById(R.id.checkBoxRow1);
+        checkBoxRows[1] = findViewById(R.id.checkBoxRow2);
+        checkBoxRows[3] = findViewById(R.id.checkBoxRow3);
+
+        /*
+        for i in range(24):
+            * Get Color
+
+            * find valueViews
+            * set colors of value Views
+            * create checkbox
+            * add onCheckedChangedListener to Box
+            * add checkbox to checkBoxRows[i/8] //
+            layout checkBoxContainer = (LinearLayout) findViewById(R.id.CheckBoxContainer_)i/8 + 1:
+
+         */
+        String colorName = String.format("colorCh%d", i+1);
+        int color = getResources().getIdentifier(colorName, "id", this.getPackageName());
+
+        ch1_color = ContextCompat.getColor(getApplicationContext(), R.color.aqua);
+
         mCh1 = findViewById(R.id.ch1);
-        mCh2 = findViewById(R.id.ch2);
-        mCh3 = findViewById(R.id.ch3);
-        mCh4 = findViewById(R.id.ch4);
-        mCh5 = findViewById(R.id.ch5);
-        mCh6 = findViewById(R.id.ch6);
-        mCh7 = findViewById(R.id.ch7);
-        mCh8 = findViewById(R.id.ch8);
+
         mCh1.setTextColor(ch1_color);
-        mCh2.setTextColor(ch2_color);
-        mCh3.setTextColor(ch3_color);
-        mCh4.setTextColor(ch4_color);
-        mCh5.setTextColor(ch5_color);
-        mCh6.setTextColor(ch6_color);
-        mCh7.setTextColor(ch7_color);
-        mCh8.setTextColor(ch8_color);
-        // for (checkbox checkBox in checkBoxes)
-        chckbx_ch1 = findViewById(R.id.checkBox_ch1);
-        chckbx_ch2 = findViewById(R.id.checkBox_ch2);
-        chckbx_ch3 = findViewById(R.id.checkBox_ch3);
-        chckbx_ch4 = findViewById(R.id.checkBox_ch4);
-        chckbx_ch5 = findViewById(R.id.checkBox_ch5);
-        chckbx_ch6 = findViewById(R.id.checkBox_ch6);
-        chckbx_ch7 = findViewById(R.id.checkBox_ch7);
-        chckbx_ch8 = findViewById(R.id.checkBox_ch8);
+
+        ArrayList<CheckBox> checkBoxes = new ArrayList<CheckBox>();
+
+
+        for(CheckBox box:checkBoxes){
+            box.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (!isChecked) enabledCheckboxes--;
+                else enabledCheckboxes++;
+                if (enabledCheckboxes == 0) {
+                    box.setChecked(true);
+                    show_ch1 = true;
+                    enabledCheckboxes++;
+                }
+            });
+        }
+
         chckbx_ch1.setOnCheckedChangeListener((buttonView, isChecked) -> {
             show_ch1 = isChecked;
             if (!isChecked) enabledCheckboxes--;
@@ -490,76 +469,7 @@ public class Record extends AppCompatActivity {
                 enabledCheckboxes++;
             }
         });
-        chckbx_ch2.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch2 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch2.setChecked(true);
-                show_ch2 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch3.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch3 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch3.setChecked(true);
-                show_ch3 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch4.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch4 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch4.setChecked(true);
-                show_ch4 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch5.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch5 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch5.setChecked(true);
-                show_ch5 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch6.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch6 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch6.setChecked(true);
-                show_ch6 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch7.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch7 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch7.setChecked(true);
-                show_ch7 = true;
-                enabledCheckboxes++;
-            }
-        });
-        chckbx_ch8.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch8 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch8.setChecked(true);
-                show_ch8 = true;
-                enabledCheckboxes++;
-            }
-        });
+
         mDataResolution = findViewById(R.id.resolution_value);
         setChart();
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
@@ -829,42 +739,17 @@ public class Record extends AppCompatActivity {
         }
     }
     private void clearUI() {
-        mCh1.setText("");
-        mCh2.setText("");
-        mCh3.setText("");
-        mCh4.setText("");
-        mCh5.setText("");
-        mCh6.setText("");
-        mCh7.setText("");
-        mCh8.setText("");
+        for(TextView view:channelValues) view.setText("");
         mDataResolution.setText(R.string.no_data);
         data_cnt = 0;
     }
 
     private void enableCheckboxes() {
-        // for checkbox in checkbox
-
-        chckbx_ch1.setEnabled(true);
-        chckbx_ch2.setEnabled(true);
-        chckbx_ch3.setEnabled(true);
-        chckbx_ch4.setEnabled(true);
-        chckbx_ch5.setEnabled(true);
-        chckbx_ch6.setEnabled(true);
-        chckbx_ch7.setEnabled(true);
-        chckbx_ch8.setEnabled(true);
+        for (CheckBox box:checkBoxes) box.setEnabled(true);
     }
 
     private void disableCheckboxes() {
-        // for checkbox in checkbox
-
-        chckbx_ch1.setEnabled(false);
-        chckbx_ch2.setEnabled(false);
-        chckbx_ch3.setEnabled(false);
-        chckbx_ch4.setEnabled(false);
-        chckbx_ch5.setEnabled(false);
-        chckbx_ch6.setEnabled(false);
-        chckbx_ch7.setEnabled(false);
-        chckbx_ch8.setEnabled(false);
+       for (CheckBox box:checkBoxes) box.setEnabled(false);
     }
 
     private List<Float> transData(int[] data) {
@@ -879,7 +764,7 @@ public class Record extends AppCompatActivity {
             float denominator = gain * precision;
             for (int datapoint : data) data_trans.add((datapoint * numerator) / denominator);
         } else {
-            for (float datapoint : data) data_trans.add(datapoint);
+            for (float datapoint : data) data_trans.add(datapoint*298/1000000);
         }
         return data_trans;
     }
@@ -1136,8 +1021,7 @@ public class Record extends AppCompatActivity {
         for (List<Float> innerList : recentlyDisplayedData) {
             int channel = 0;
             for (Float entry : innerList) {
-                if ((show_ch1 && channel == 0) || (show_ch2 && channel == 1) || (show_ch3 && channel == 2) || (show_ch4 && channel == 3) ||
-                        (show_ch5 && channel == 4) || (show_ch6 && channel == 5) || (show_ch7 && channel == 6) || (show_ch8 && channel == 7)) {
+                if (channelsShown[channel]) {
                     if (entry > max) {
                         max = entry.intValue();
                     }
