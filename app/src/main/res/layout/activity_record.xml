@@ -32,18 +32,15 @@
 
             <TextView
                 android:id="@+id/device_address"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/no_address"
-                android:textSize="14sp" />
-        </LinearLayout>
+                android:text="@string/no_device"
+                android:textSize="13sp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="1dp"
-            android:orientation="horizontal">
-
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -55,15 +52,19 @@
                 android:layout_width="5dp"
                 android:layout_height="wrap_content" />
 
+
             <TextView
                 android:id="@+id/connection_state"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
                 android:text="@string/disconnected"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textAlignment="viewEnd"/>
+
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/channelValueRow1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="1dp"
@@ -80,172 +81,53 @@
                 android:layout_width="5dp"
                 android:layout_height="wrap_content" />
 
-            <TextView
-                android:id="@+id/ch1"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch1_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/ch1_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch2"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch2_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch2_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch3"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch3_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch3_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch4"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch4_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch4_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
 
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/channelValueRow2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="1dp"
             android:orientation="horizontal">
-
             <TextView
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/label_data"
+                android:layout_height="match_parent"
+                android:text = "Data:"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:visibility="invisible" />
-
+                android:visibility="invisible"
+                />
             <Space
                 android:layout_width="5dp"
-                android:layout_height="wrap_content" />
+                android:layout_height="match_parent"/>
 
-            <TextView
-                android:id="@+id/ch5"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch5_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
 
-            <TextView
-                android:id="@+id/ch5_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch6"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch6_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch6_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch7"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch7_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch7_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch8"
-                android:layout_width="5dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:text="@string/ch8_label"
-                android:textAlignment="gravity"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/ch_unit"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="@string/micro_volts"
-                android:textSize="14sp" />
 
         </LinearLayout>
+        <LinearLayout
+            android:id="@+id/channelValueRow3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="1dp"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text = "Data:"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="invisible"
+                />
+            <Space
+                android:layout_width="5dp"
+                android:layout_height="match_parent"/>
 
+
+
+
+        </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -270,6 +152,17 @@
                 android:text="@string/no_data"
                 android:textSize="14sp" />
         </LinearLayout>
+
+        <Switch
+            android:id="@+id/switch_plots"
+            android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0"
+            android:checked="false"
+            android:enabled="false"
+            android:text="@string/real_time_plot_label"
+            android:textStyle="bold"
+            android:visibility="visible" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -298,16 +191,7 @@
     </LinearLayout>
 
 
-    <Switch
-        android:id="@+id/switch_plots"
-        android:layout_width="fill_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0"
-        android:checked="false"
-        android:enabled="false"
-        android:text="@string/real_time_plot_label"
-        android:textStyle="bold"
-        android:visibility="visible" />
+
 
     <LinearLayout
         android:id="@+id/linearLayout_chart"
@@ -323,16 +207,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <CheckBox
-                android:id="@+id/checkBox_ch1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:buttonTint="@color/aqua"
-                android:checked="true"
-                android:text="@string/ch1"
-                android:textColor="@color/aqua"
-                android:textColorLink="@color/fuchsia" />
+
         </LinearLayout>
 
         <LinearLayout
@@ -341,15 +216,6 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <CheckBox
-                android:id="@+id/checkBox_ch4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:buttonTint="@color/yellow"
-                android:checked="true"
-                android:text="@string/ch4"
-                android:textColor="@color/black" />
         </LinearLayout>
 
         <LinearLayout
@@ -357,16 +223,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-
-            <CheckBox
-                android:id="@+id/checkBox_ch8"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:buttonTint="@color/black"
-                android:checked="true"
-                android:text="@string/ch8"
-                android:textColor="@color/black" />
 
         </LinearLayout>
 

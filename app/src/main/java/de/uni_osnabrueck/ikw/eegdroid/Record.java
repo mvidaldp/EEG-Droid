@@ -18,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -26,6 +27,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -78,14 +80,17 @@ public class Record extends AppCompatActivity {
     private final List<Float> dp_received = new ArrayList<>();
     private final List<List<Float>> accumulated = new ArrayList<>();
     private final int MAX_VISIBLE = 500;  // see 500ms at the time on the plot
+    private int nChannels = 24;
+    private final ArrayList<ArrayList<Entry>> lineEntryLists = new ArrayList<ArrayList<Entry>>() {
+        {
+            for(int i=0; i<nChannels; i++) {
+                ArrayList<Entry> lineEntries = new ArrayList<>();
+                add(lineEntries);
+            }
+        }
+    };
     private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries2 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries3 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries4 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries5 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries6 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries7 = new ArrayList<>();
-    private final ArrayList<Entry> lineEntries8 = new ArrayList<>();
+
     private TextView mConnectionState;
     private TextView viewDeviceAddress;
     private boolean mNewDevice;
@@ -128,16 +133,11 @@ public class Record extends AppCompatActivity {
     private float res_time;
     private float res_freq;
     private int cnt = 0;
-    private int nChannels = 24;
-    private int ch1_color;
     private int[] channelColors = new int[nChannels];
-    private boolean show_ch1 = true;
-    private boolean[] channelsShown;
-    private int enabledCheckboxes = 8;
-    private CheckBox chckbx_ch1;
+    private boolean[] channelsShown = new boolean[nChannels];
+    private int enabledCheckboxes = 0;
     private CheckBox[] checkBoxes = new CheckBox[nChannels];
-    private TextView mCh1;
-    private TextView[] channelValues = new TextView[nChannels];
+    private TextView[] channelValueViews = new TextView[nChannels];
     private TextView mXAxis;
     private TextView mDataResolution;
     private Spinner gain_spinner;
@@ -267,7 +267,7 @@ public class Record extends AppCompatActivity {
                 data_cnt++;
                 if (!timerRunning) startTimer();
                 long last_data = System.currentTimeMillis();
-                enableCheckboxes();
+                enableCheckboxes(6);
                 microV = transData(Objects.requireNonNull(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA)));
                 displayData(microV);
                 if (plotting) {
@@ -392,6 +392,7 @@ public class Record extends AppCompatActivity {
         timerRunning = true;
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -421,55 +422,74 @@ public class Record extends AppCompatActivity {
         LinearLayout[] checkBoxRows = new LinearLayout[3];
         checkBoxRows[0] = findViewById(R.id.checkBoxRow1);
         checkBoxRows[1] = findViewById(R.id.checkBoxRow2);
-        checkBoxRows[3] = findViewById(R.id.checkBoxRow3);
+        checkBoxRows[2] = findViewById(R.id.checkBoxRow3);
 
-        /*
-        for i in range(24):
-            * Get Color
+        LinearLayout[] channelValueRows = new LinearLayout[3];
+        channelValueRows[0] = findViewById(R.id.channelValueRow1);
+        channelValueRows[1] = findViewById(R.id.channelValueRow2);
+        channelValueRows[2] = findViewById(R.id.channelValueRow3);
 
-            * find valueViews
-            * set colors of value Views
-            * create checkbox
-            * add onCheckedChangedListener to Box
-            * add checkbox to checkBoxRows[i/8] //
-            layout checkBoxContainer = (LinearLayout) findViewById(R.id.CheckBoxContainer_)i/8 + 1:
+        getChannelColors(); // fills int[] channelColors with values
+        for(int i=0; i<nChannels; i++) {
+            // Create View for Channel Value
+            TextView channelValueView = new TextView(getApplicationContext());
+            LinearLayout.LayoutParams valueLayout =  new LinearLayout.LayoutParams(6,-1,1f);
+            //valueLayout.width = 6;
+            //valueLayout.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            //valueLayout.weight = 1;
+            valueLayout.topMargin = 2;
+            channelValueView.setLayoutParams(valueLayout);
+            channelValueView.setTextAlignment(RelativeLayout.TEXT_ALIGNMENT_VIEW_END);
+            channelValueView.setText("0μV");
+            channelValueView.setTextColor(channelColors[i]);
+            channelValueView.setTextSize(13);
+            // channelValueView.setGravity(0);
+            channelValueViews[i] = channelValueView;
+            channelValueRows[i / 8].addView(channelValueView);
 
-         */
-        String colorName = String.format("colorCh%d", i+1);
-        int color = getResources().getIdentifier(colorName, "id", this.getPackageName());
-
-        ch1_color = ContextCompat.getColor(getApplicationContext(), R.color.aqua);
-
-        mCh1 = findViewById(R.id.ch1);
-
-        mCh1.setTextColor(ch1_color);
-
-        ArrayList<CheckBox> checkBoxes = new ArrayList<CheckBox>();
-
-
-        for(CheckBox box:checkBoxes){
+            // Create Checkbox for displaying channel
+            CheckBox box = new CheckBox(getApplicationContext());
+            LinearLayout.LayoutParams boxLayout = new LinearLayout.LayoutParams(-2,-2,1f);
+            //boxLayout.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            //boxLayout.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            //boxLayout.weight = 1;
+            box.setLayoutParams(boxLayout);
+            box.setText(Integer.toString(i + 1));
+            box.setTextColor(channelColors[i]);
             box.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (!isChecked) enabledCheckboxes--;
-                else enabledCheckboxes++;
-                if (enabledCheckboxes == 0) {
-                    box.setChecked(true);
-                    show_ch1 = true;
+                int channelId = Integer.parseInt(buttonView.getText().toString()) - 1;
+                if (isChecked) {
                     enabledCheckboxes++;
+                    if (enabledCheckboxes <= 8) {
+                        channelsShown[channelId] = true;
+                    } else {
+                        Toast.makeText(
+                                getApplicationContext(),
+                                "Can't plot more than 8 channels simultaneously.",
+                                Toast.LENGTH_LONG
+                        ).show();
+                        box.setChecked(false);
+                        enabledCheckboxes--;
+                    }
+                }
+                if (!isChecked) {
+                    enabledCheckboxes--;
+                    if (enabledCheckboxes > 0) {
+                        channelsShown[channelId] = false;
+                    } else {
+                        Toast.makeText(
+                                getApplicationContext(),
+                                "Need to plot at least 1 Channel",
+                                Toast.LENGTH_LONG
+                        ).show();
+                        box.setChecked(true);
+                        enabledCheckboxes++;
+                    }
                 }
             });
+            checkBoxes[i] = box;
+            checkBoxRows[i / 8].addView(box);
         }
-
-        chckbx_ch1.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            show_ch1 = isChecked;
-            if (!isChecked) enabledCheckboxes--;
-            else enabledCheckboxes++;
-            if (enabledCheckboxes == 0) {
-                chckbx_ch1.setChecked(true);
-                show_ch1 = true;
-                enabledCheckboxes++;
-            }
-        });
-
         mDataResolution = findViewById(R.id.resolution_value);
         setChart();
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
@@ -601,6 +621,7 @@ public class Record extends AppCompatActivity {
         }
     }
 
+    // TODO: Make this write to the saved config characteristic
     private void writeGattCharacteristic(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         String uuid;
@@ -739,13 +760,13 @@ public class Record extends AppCompatActivity {
         }
     }
     private void clearUI() {
-        for(TextView view:channelValues) view.setText("");
+        for(TextView view:channelValueViews) view.setText("0μV");
         mDataResolution.setText(R.string.no_data);
         data_cnt = 0;
     }
 
-    private void enableCheckboxes() {
-        for (CheckBox box:checkBoxes) box.setEnabled(true);
+    private void enableCheckboxes(int n) {
+        for (int i=0;i<n;i++) checkBoxes[i].setEnabled(true);
     }
 
     private void disableCheckboxes() {
@@ -770,26 +791,15 @@ public class Record extends AppCompatActivity {
     }
 
     @SuppressLint("DefaultLocale")
-    private void displayData(List<Float> data_microV) {
-        if (data_microV != null) {
-            // data format example: +01012 -00234 +01374 -01516 +01656 +01747 +00131 -00351
-            StringBuilder trans = new StringBuilder();
-            List<String> values = new ArrayList<>();
-            for (Float value : data_microV) {
-                if (value >= 0) trans.append("+");
-                trans.append(String.format("%5.2f", value));
-                values.add(trans.toString());
-                trans = new StringBuilder();
-            }
-            mCh1.setText(values.get(0));
-            mCh2.setText(values.get(1));
-            mCh3.setText(values.get(2));
-            mCh4.setText(values.get(3));
-            mCh5.setText(values.get(4));
-            mCh6.setText(values.get(5));
-            if (!mNewDevice) {
-                mCh7.setText(values.get(6));
-                mCh8.setText(values.get(7));
+    private void displayData(List<Float> signalMicroV) {
+        if (signalMicroV != null) {
+            // data format example: +12.1    -913.2      -1.9  ...
+            for(int i=0; i<24; i++){
+                String value = "";
+                if(signalMicroV.get(i) > 0) value += "+";
+                value += String.format("%.1f", signalMicroV.get(i));
+                value += "μV";
+                channelValueViews[i].setText(value);
             }
         }
     }
@@ -848,133 +858,45 @@ public class Record extends AppCompatActivity {
         bottomAxis.setTextColor(Color.GRAY);
     }
 
-    // for checkbox in checkbox
-    private LineDataSet createSet1(ArrayList<Entry> le, boolean show) {
-        LineDataSet set1 = new LineDataSet(le, "Ch-1");
-        set1.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set1.setColor(ch1_color);
-        set1.setDrawCircles(false);
-        set1.setLineWidth(1f);
-        set1.setValueTextColor(ch1_color);
-        set1.setVisible(show);
-        return set1;
+    private LineDataSet createSet(int channelId){
+        LineDataSet set = new LineDataSet(lineEntryLists.get(channelId), String.format("Ch-%d"+channelId));
+        set.setAxisDependency(YAxis.AxisDependency.LEFT);
+        set.setColor(channelColors[channelId]);
+        set.setDrawCircles(false);
+        set.setLineWidth(1f);
+        set.setValueTextColor(channelColors[channelId]);
+        set.setVisible(channelsShown[channelId]);
+        return set;
     }
 
-    private LineDataSet createSet2(ArrayList<Entry> le, boolean show) {
-        LineDataSet set2 = new LineDataSet(le, "Ch-2");
-        set2.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set2.setColor(ch2_color);
-        set2.setDrawCircles(false);
-        set2.setLineWidth(1f);
-        set2.setValueTextColor(ch2_color);
-        set2.setVisible(show);
-        return set2;
-    }
-
-    private LineDataSet createSet3(ArrayList<Entry> le, boolean show) {
-        LineDataSet set3 = new LineDataSet(le, "Ch-3");
-        set3.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set3.setColor(ch3_color);
-        set3.setDrawCircles(false);
-        set3.setLineWidth(1f);
-        set3.setValueTextColor(ch3_color);
-        set3.setVisible(show);
-        return set3;
-    }
-
-    private LineDataSet createSet4(ArrayList<Entry> le, boolean show) {
-        LineDataSet set4 = new LineDataSet(le, "Ch-4");
-        set4.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set4.setColor(ch4_color);
-        set4.setDrawCircles(false);
-        set4.setLineWidth(1f);
-        set4.setValueTextColor(ch4_color);
-        set4.setVisible(show);
-        return set4;
-    }
-
-    private LineDataSet createSet5(ArrayList<Entry> le, boolean show) {
-        LineDataSet set5 = new LineDataSet(le, "Ch-5");
-        set5.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set5.setColor(ch5_color);
-        set5.setDrawCircles(false);
-        set5.setLineWidth(1f);
-        set5.setValueTextColor(ch5_color);
-        set5.setVisible(show);
-        return set5;
-    }
-
-    private LineDataSet createSet6(ArrayList<Entry> le, boolean show) {
-        LineDataSet set6 = new LineDataSet(le, "Ch-6");
-        set6.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set6.setColor(ch6_color);
-        set6.setDrawCircles(false);
-        set6.setLineWidth(1f);
-        set6.setValueTextColor(ch6_color);
-        set6.setVisible(show);
-        return set6;
-    }
-
-    private LineDataSet createSet7(ArrayList<Entry> le, boolean show) {
-        LineDataSet set7 = new LineDataSet(le, "Ch-7");
-        set7.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set7.setColor(ch7_color);
-        set7.setDrawCircles(false);
-        set7.setLineWidth(1f);
-        set7.setValueTextColor(ch7_color);
-        set7.setVisible(show);
-        return set7;
-    }
-
-    private LineDataSet createSet8(ArrayList<Entry> le, boolean show) {
-        LineDataSet set8 = new LineDataSet(le, "Ch-8");
-        set8.setAxisDependency(YAxis.AxisDependency.LEFT);
-        set8.setColor(ch8_color);
-        set8.setDrawCircles(false);
-        set8.setLineWidth(1f);
-        set8.setValueTextColor(ch8_color);
-        set8.setVisible(show);
-        return set8;
-    }
-
+    // TODO: Make Entry loopable
     private void addEntries(final List<List<Float>> e_list) {
         adjustScale(e_list);
         final List<ILineDataSet> datasets = new ArrayList<>();  // for adding multiple plots
         float x = 0;
-        float DATAPOINT_TIME = mNewDevice ? 4f : 4.5f;
+        float DATAPOINT_TIME = 6f;
+
+
+        /*** Here the code starts blocking the garbage collector! **/
         for (List<Float> f : e_list) {
             cnt++;
             x = cnt * DATAPOINT_TIME;
-            lineEntries1.add(new Entry(x, f.get(0)));
-            lineEntries2.add(new Entry(x, f.get(1)));
-            lineEntries3.add(new Entry(x, f.get(2)));
-            lineEntries4.add(new Entry(x, f.get(3)));
-            lineEntries5.add(new Entry(x, f.get(4)));
-            lineEntries6.add(new Entry(x, f.get(5)));
-            if (!mNewDevice) {
-                lineEntries7.add(new Entry(x, f.get(6)));
-                lineEntries8.add(new Entry(x, f.get(7)));
-            }
+            
+            /*** not if the following loop is commented out, however. **/
+            /*for(int i=0; i<nChannels; ) {
+                //the ith entryList represents the stored data of the ith channel
+                lineEntryLists.get(i).add(new Entry(x, f.get(i)));
+            }*/
         }
+        /*
+        // TODO: Make dataset creation looped
         final float f_x = x;
         if (thread != null) thread.interrupt();
         final Runnable runnable = () -> {
-            LineDataSet set1 = createSet1(lineEntries1, show_ch1);
-            datasets.add(set1);
-            LineDataSet set2 = createSet2(lineEntries2, show_ch2);
-            datasets.add(set2);
-            LineDataSet set3 = createSet3(lineEntries3, show_ch3);
-            datasets.add(set3);
-            LineDataSet set4 = createSet4(lineEntries4, show_ch4);
-            datasets.add(set4);
-            LineDataSet set5 = createSet5(lineEntries5, show_ch5);
-            datasets.add(set5);
-            LineDataSet set6 = createSet6(lineEntries6, show_ch6);
-            datasets.add(set6);
-            LineDataSet set7 = createSet7(lineEntries7, show_ch7);
-            datasets.add(set7);
-            LineDataSet set8 = createSet8(lineEntries8, show_ch8);
-            datasets.add(set8);
+            for(int i=0;i<nChannels;i++) {
+                LineDataSet set = createSet(i);
+                datasets.add(set);
+            }
             LineData linedata = new LineData(datasets);
             linedata.notifyDataChanged();
             mChart.setData(linedata);
@@ -999,7 +921,7 @@ public class Record extends AppCompatActivity {
                     mChart.getData().getDataSetByIndex(i).removeFirst();
                 }
             }
-        }
+        }*/
     }
 
     /**
@@ -1016,6 +938,7 @@ public class Record extends AppCompatActivity {
         for (List<Float> innerList : e_list) {
             recentlyDisplayedData.add(innerList);
         }
+        recentlyDisplayedData.addAll(e_list);
         int max = 0;
         int min = 0;
         for (List<Float> innerList : recentlyDisplayedData) {
@@ -1085,12 +1008,11 @@ public class Record extends AppCompatActivity {
     //Saves the data at the end of session
     @SuppressLint("DefaultLocale")
     private void saveSession(final String tag) {
-        final String username = getSharedPreferences("userPreferences", 0).getString("username", "user");
-        final String userID = getSharedPreferences("userPreferences", 0).getString("userID", "12345678");
         final String top_header = "Username, User ID, Session ID,Session Tag,Date,Shape (rows x columns)," +
                 "Duration (ms),Starting Time,Ending Time,Resolution (ms),Resolution (Hz)," +
                 "Unit Measure,Starting Timestamp,Ending Timestamp";
-
+        final String username = getSharedPreferences("userPreferences", 0).getString("username", "user");
+        final String userID = getSharedPreferences("userPreferences", 0).getString("userID", "12345678");
         //final String dp_header = "Pkg ID,Pkg Loss,Time,Ch-1,Ch-2,Ch-3,Ch-4,Ch-5,Ch-6,Ch-7,Ch-8";
         final UUID id = UUID.randomUUID();
         @SuppressLint("SimpleDateFormat") final String date = new SimpleDateFormat("dd-MM-yyyy_HH-mm-ss").format(new Date());
@@ -1224,6 +1146,34 @@ public class Record extends AppCompatActivity {
             menuItemCast.setVisible(false);
         }
     }
+
+    private void getChannelColors(){
+        // If you figure out a way to do this in a for loop, please feel free to make this better.
+        channelColors[0] = ContextCompat.getColor(this, R.color.Ch1);
+        channelColors[1] = ContextCompat.getColor(this, R.color.Ch2);
+        channelColors[2] = ContextCompat.getColor(this, R.color.Ch3);
+        channelColors[3] = ContextCompat.getColor(this, R.color.Ch4);
+        channelColors[4] = ContextCompat.getColor(this, R.color.Ch5);
+        channelColors[5] = ContextCompat.getColor(this, R.color.Ch6);
+        channelColors[6] = ContextCompat.getColor(this, R.color.Ch7);
+        channelColors[7] = ContextCompat.getColor(this, R.color.Ch8);
+        channelColors[8] = ContextCompat.getColor(this, R.color.Ch9);
+        channelColors[9] = ContextCompat.getColor(this, R.color.Ch10);
+        channelColors[10] = ContextCompat.getColor(this, R.color.Ch11);
+        channelColors[11] = ContextCompat.getColor(this, R.color.Ch12);
+        channelColors[12] = ContextCompat.getColor(this, R.color.Ch13);
+        channelColors[13] = ContextCompat.getColor(this, R.color.Ch14);
+        channelColors[14] = ContextCompat.getColor(this, R.color.Ch15);
+        channelColors[15] = ContextCompat.getColor(this, R.color.Ch16);
+        channelColors[16] = ContextCompat.getColor(this, R.color.Ch17);
+        channelColors[17] = ContextCompat.getColor(this, R.color.Ch18);
+        channelColors[18] = ContextCompat.getColor(this, R.color.Ch19);
+        channelColors[19] = ContextCompat.getColor(this, R.color.Ch20);
+        channelColors[20] = ContextCompat.getColor(this, R.color.Ch21);
+        channelColors[21] = ContextCompat.getColor(this, R.color.Ch22);
+        channelColors[22] = ContextCompat.getColor(this, R.color.Ch23);
+        channelColors[23] = ContextCompat.getColor(this, R.color.Ch24);
+    };
 
 
     class CastThread extends Thread {
