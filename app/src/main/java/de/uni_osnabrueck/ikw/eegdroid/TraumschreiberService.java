@@ -13,8 +13,9 @@ public class TraumschreiberService {
     public String mTraumschreiberDeviceAddress;
     private byte[] dpcmBuffer = new byte[30];
     private byte[] dpcmBuffer2 = new byte[30];
-    private int[] previousData = new int[24];
+    private int[] decodedSignal = new int[24];
     private boolean characteristic0Ready = false;
+    private int signalBitShift = 6;
 
     public TraumschreiberService() {
 
@@ -30,6 +31,10 @@ public class TraumschreiberService {
     }
     public static boolean isNewModel(String bluetoothDeviceName) {
         return bluetoothDeviceName.startsWith("T");
+    }
+
+    public void setSignalScaling(int newShift){
+        signalBitShift = newShift;
     }
 
 
@@ -93,6 +98,7 @@ public class TraumschreiberService {
             } else if (characteristic0Ready && characteristicNumber == 2){
                 System.arraycopy(data_bytes,0,dpcmBuffer2,10,20);
                 data_ints = decodeDpcm(dpcmBuffer2);
+                characteristic0Ready=false;
 
             } else {
                 data_ints = null;
@@ -100,9 +106,6 @@ public class TraumschreiberService {
             }
 
         }
-
-
-
         return data_ints;
 
     }
@@ -112,18 +115,16 @@ public class TraumschreiberService {
      * @param  bytes
      * @return int[] data
      */
-    public int[] decodeDpcm(byte[] bytes){
-        Log.v(TAG, "Encoded Delta: " + Arrays.toString(bytes));
-        int[] data = bytesTo10bitInts(bytes);
-        Log.v(TAG, "Decoded Delta: " + Arrays.toString(data));
+    public int[] decodeDpcm(byte[] deltaBytes){
+        //Log.v(TAG, "Encoded Delta: " + Arrays.toString(bytes));
+        int[] delta = bytesTo10bitInts(deltaBytes);
+        //Log.v(TAG, "Decoded Delta: " + Arrays.toString(data));
 
-        for(int i=0; i<data.length; i++){
-            data[i] += previousData[i];
+        for(int i=0; i<delta.length; i++){
+            decodedSignal[i] += delta[i] << signalBitShift;
         }
-        System.arraycopy(data,0,previousData,0,data.length);
 
-        return data;
-
+        return decodedSignal;
     }
     /***
      * Turns an array of bytes into an array fo 10bit ints.
@@ -143,10 +144,10 @@ public class TraumschreiberService {
         int idx = 0;
         for(int i=0; i<=bytes.length-5; i+=5){
             idx = i * 4/5;
-            data[idx+0] = ((bytes[i+0]&0xff) << 2) | ((bytes[i+1]&0xc0) >> 6);
-            data[idx+1] = ((bytes[i+1]&0x3f) << 4) | ((bytes[i+2]&0xf0) >> 4);
-            data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xfc) >> 2);
-            data[idx+3] = ((bytes[i+3]&0x03) << 8) | ((bytes[i+4]&0xff) >> 0);
+            data[idx+0] = ((bytes[i+0]&0xff) << 2) | ((bytes[i+1]&0xc0) >>> 6);
+            data[idx+1] = ((bytes[i+1]&0x3f) << 4) | ((bytes[i+2]&0xf0) >>> 4);
+            data[idx+2] = ((bytes[i+2]&0x0f) << 6) | ((bytes[i+3]&0xfc) >>> 2);
+            data[idx+3] = ((bytes[i+3]&0x03) << 8) | ((bytes[i+4]&0xff) >>> 0);
         }
         // Subtracting 1024 turns unsigned 10bit ints into their 2's complement
         for(int i=0; i<data.length; i++){ if(data[i] > 511) data[i] -= 1024; }
