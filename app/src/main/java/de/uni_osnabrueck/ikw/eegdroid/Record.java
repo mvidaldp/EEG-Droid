@@ -41,6 +41,7 @@ import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.DataSet;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -79,7 +80,7 @@ public class Record extends AppCompatActivity {
     private final Handler handler = new Handler();
     private final List<Float> dp_received = new ArrayList<>();
     private final List<List<Float>> accumulated = new ArrayList<>();
-    private final int MAX_VISIBLE = 500;  // see 500ms at the time on the plot
+    private final int MAX_VISIBLE = 1000;  // see 500ms at the time on the plot
     private int nChannels = 24;
     private final ArrayList<ArrayList<Entry>> lineEntryLists = new ArrayList<ArrayList<Entry>>() {
         {
@@ -89,8 +90,6 @@ public class Record extends AppCompatActivity {
             }
         }
     };
-    private final ArrayList<Entry> lineEntries1 = new ArrayList<>();
-
     private TextView mConnectionState;
     private TextView viewDeviceAddress;
     private boolean mNewDevice;
@@ -211,14 +210,22 @@ public class Record extends AppCompatActivity {
         @Override
         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             if (!isChecked) {
-                layout_plots.setVisibility(ViewStub.GONE);
-                mXAxis.setVisibility(ViewStub.GONE);
+                //layout_plots.setVisibility(ViewStub.GONE);
+                //mXAxis.setVisibility(ViewStub.VISIBLE);
                 plotting = false;
             } else {
-                layout_plots.setVisibility(ViewStub.VISIBLE);
-                mXAxis.setVisibility(ViewStub.VISIBLE);
-                plotting = true;
-                plotting_start = System.currentTimeMillis();
+                //layout_plots.setVisibility(ViewStub.VISIBLE);
+                //mXAxis.setVisibility(ViewStub.VISIBLE);
+                if(enabledCheckboxes!=0) {
+                    plotting = true;
+                    plotting_start = System.currentTimeMillis();
+                } else{
+                    Toast.makeText(getApplicationContext(),
+                                "Need to select a Channel first",
+                                Toast.LENGTH_SHORT).show();
+                    buttonView.setChecked(false);
+                }
+
             }
         }
     };
@@ -267,14 +274,15 @@ public class Record extends AppCompatActivity {
                 data_cnt++;
                 if (!timerRunning) startTimer();
                 long last_data = System.currentTimeMillis();
-                enableCheckboxes(6);
+                enableCheckboxes(1);
                 microV = transData(Objects.requireNonNull(intent.getIntArrayExtra(BluetoothLeService.EXTRA_DATA)));
-                displayData(microV);
-                if (plotting) {
+                if (data_cnt%30==0) displayData(microV);
+                // Only add every second sample to the plotting data
+                if (plotting & data_cnt%2==0) {
                     accumulated.add(microV);
                     long plotting_elapsed = last_data - plotting_start;
-                    int ACCUM_PLOT = 30;
-                    if (plotting_elapsed > ACCUM_PLOT) {
+                    int ACCUM_PLOT_MS = 30;
+                    if (plotting_elapsed > ACCUM_PLOT_MS) {
                         addEntries(accumulated);
                         accumulated.clear();
                         plotting_start = System.currentTimeMillis();
@@ -406,9 +414,10 @@ public class Record extends AppCompatActivity {
         gain_spinner = findViewById(R.id.gain_spinner);
 
         layout_plots = findViewById(R.id.linearLayout_chart);
-        layout_plots.setVisibility(ViewStub.GONE);
+        layout_plots.setVisibility(ViewStub.VISIBLE);
+
         mXAxis = findViewById(R.id.XAxis_title);
-        mXAxis.setVisibility(ViewStub.GONE);
+        mXAxis.setVisibility(ViewStub.VISIBLE);
         imageButtonRecord.setOnClickListener(imageRecordOnClickListener);
         imageButtonSave.setOnClickListener(imageSaveOnClickListener);
         imageButtonDiscard.setOnClickListener(imageDiscardOnClickListener);
@@ -433,7 +442,7 @@ public class Record extends AppCompatActivity {
         for(int i=0; i<nChannels; i++) {
             // Create View for Channel Value
             TextView channelValueView = new TextView(getApplicationContext());
-            LinearLayout.LayoutParams valueLayout =  new LinearLayout.LayoutParams(6,-1,1f);
+            LinearLayout.LayoutParams valueLayout =  new LinearLayout.LayoutParams(15,-1,1f);
             //valueLayout.width = 6;
             //valueLayout.height = ViewGroup.LayoutParams.MATCH_PARENT;
             //valueLayout.weight = 1;
@@ -449,7 +458,7 @@ public class Record extends AppCompatActivity {
 
             // Create Checkbox for displaying channel
             CheckBox box = new CheckBox(getApplicationContext());
-            LinearLayout.LayoutParams boxLayout = new LinearLayout.LayoutParams(-2,-2,1f);
+            LinearLayout.LayoutParams boxLayout = new LinearLayout.LayoutParams(15,-2,1f);
             //boxLayout.width = ViewGroup.LayoutParams.WRAP_CONTENT;
             //boxLayout.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             //boxLayout.weight = 1;
@@ -473,17 +482,16 @@ public class Record extends AppCompatActivity {
                     }
                 }
                 if (!isChecked) {
-                    enabledCheckboxes--;
-                    if (enabledCheckboxes > 0) {
+                    if(!plotting | enabledCheckboxes >1){
+                        enabledCheckboxes--;
                         channelsShown[channelId] = false;
                     } else {
                         Toast.makeText(
                                 getApplicationContext(),
-                                "Need to plot at least 1 Channel",
-                                Toast.LENGTH_LONG
+                                "Need to plot at least one channel",
+                                Toast.LENGTH_SHORT
                         ).show();
-                        box.setChecked(true);
-                        enabledCheckboxes++;
+                        buttonView.setChecked(true); //Check this box again
                     }
                 }
             });
@@ -719,19 +727,16 @@ public class Record extends AppCompatActivity {
             uuid = gattService.getUuid().toString();
 
             // If we find the right service..
-            if ((!mNewDevice && uuid.equals("a22686cb-9268-bd91-dd4f-b52d03d85593")) || (mNewDevice && uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb"))) {
+            if (uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb")) {
                 List<BluetoothGattCharacteristic> gattCharacteristics =
                         gattService.getCharacteristics();
-
                 // Loop through all characteristics of the service
                 for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                     charUuid = gattCharacteristic.getUuid().toString();
-
                     // If the characteristic is a notifying characteristic
-                    if ((!mNewDevice && charUuid.equals("faa7b588-19e5-f590-0545-c99f193c5c3e"))
-                            || notifyingUUIDs.contains(charUuid)) {
-
+                    if (notifyingUUIDs.contains(charUuid)) {
                             notifyingCharacteristics.add(gattCharacteristic);
+                            mBluetoothLeService.setCharacteristicNotification(gattCharacteristic, false);
                             mNotifyCharacteristic = gattCharacteristic; // store the last one here.
                     }
                 }
@@ -793,13 +798,19 @@ public class Record extends AppCompatActivity {
     @SuppressLint("DefaultLocale")
     private void displayData(List<Float> signalMicroV) {
         if (signalMicroV != null) {
-            // data format example: +12.1    -913.2      -1.9  ...
             for(int i=0; i<24; i++){
-                String value = "";
-                if(signalMicroV.get(i) > 0) value += "+";
-                value += String.format("%.1f", signalMicroV.get(i));
-                value += "μV";
-                channelValueViews[i].setText(value);
+                String channelValueS = "";
+                float channelValueF = signalMicroV.get(i);
+                //if(signalMicroV.get(i) > 0) value += "+";
+                if(channelValueF >= 1000 | channelValueF <=-1000) {
+                    channelValueF = channelValueF/1000;
+                    channelValueS += String.format("%.2f", channelValueF);
+                    channelValueS += "mV";
+                } else{
+                    channelValueS += String.format("%.1f", channelValueF);
+                    channelValueS += "μV";
+                }
+                channelValueViews[i].setText(channelValueS);
             }
         }
     }
@@ -831,6 +842,7 @@ public class Record extends AppCompatActivity {
         // set an alternative background color
         LineData data = new LineData();
         data.setValueTextColor(Color.BLACK);
+        data.setDrawValues(true);
         // add empty data
         mChart.setData(data);
         // get the legend (only possible after setting data)
@@ -859,7 +871,7 @@ public class Record extends AppCompatActivity {
     }
 
     private LineDataSet createSet(int channelId){
-        LineDataSet set = new LineDataSet(lineEntryLists.get(channelId), String.format("Ch-%d"+channelId));
+        LineDataSet set = new LineDataSet(lineEntryLists.get(channelId), String.format("Ch-%d",channelId+1));
         set.setAxisDependency(YAxis.AxisDependency.LEFT);
         set.setColor(channelColors[channelId]);
         set.setDrawCircles(false);
@@ -876,29 +888,35 @@ public class Record extends AppCompatActivity {
         float x = 0;
         float DATAPOINT_TIME = 6f;
 
+        /*** Loop through all "rows",each row has nChannels entries **/
+        for(int i=0;i<e_list.size();i++){
+            cnt+=2; // TODO: manage skipping every other frame in a cleaner way
+            x = cnt * DATAPOINT_TIME; // timestamp for x axis in ms
+            List<Float> f = e_list.get(i);
 
-        /*** Here the code starts blocking the garbage collector! **/
-        for (List<Float> f : e_list) {
-            cnt++;
-            x = cnt * DATAPOINT_TIME;
-            
-            /*** not if the following loop is commented out, however. **/
-            /*for(int i=0; i<nChannels; ) {
+            /***  add the entries of every shown channel.**/
+            for(int n=0; n<nChannels;n++ ) {
                 //the ith entryList represents the stored data of the ith channel
-                lineEntryLists.get(i).add(new Entry(x, f.get(i)));
-            }*/
+                // TODO: Chec if if condition makes a difference. CUrrent: NO
+                lineEntryLists.get(n).add(new Entry(x, f.get(n)));
+            }
         }
-        /*
-        // TODO: Make dataset creation looped
         final float f_x = x;
+
         if (thread != null) thread.interrupt();
         final Runnable runnable = () -> {
+
+            // PLOTTABLE DATASET CREATION
             for(int i=0;i<nChannels;i++) {
-                LineDataSet set = createSet(i);
-                datasets.add(set);
+                if(channelsShown[i]){
+                    LineDataSet set = createSet(i);
+                    datasets.add(set);
+                }
+
             }
             LineData linedata = new LineData(datasets);
             linedata.notifyDataChanged();
+            linedata.setDrawValues(false);
             mChart.setData(linedata);
             mChart.notifyDataSetChanged();
             // limit the number of visible entries
@@ -913,15 +931,18 @@ public class Record extends AppCompatActivity {
             }
         });
         thread.start();
+
         // max time range in ms (x value) to store on plot
-        int PLOT_MEMO = 3000;
+        int PLOT_MEMO = 2000;
+        // as soon as we have recorded more than PLOT_MEMO miliseconds, remove earlier entries
+        // from chart.
         if (x > PLOT_MEMO) {
-            for (int j = 0; j < e_list.size(); j++) {
+            for (int j = 0; j<e_list.size(); j++) {
                 for (int i = 0; i < mChart.getData().getDataSetCount(); i++) {
                     mChart.getData().getDataSetByIndex(i).removeFirst();
                 }
             }
-        }*/
+        }
     }
 
     /**
