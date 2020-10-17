@@ -61,8 +61,10 @@ public class BluetoothLeService extends Service {
     private String mBluetoothDeviceAddress;
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
+    private TraumschreiberService mTraumschreiberService = new TraumschreiberService();
+    private int[] dataDecoded;
     private boolean newTraumschreiber = false;
-    private boolean characteristicSet = false;
+    public boolean isBusy = false;
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -116,6 +118,14 @@ public class BluetoothLeService extends Service {
                                           int status) {
             Log.d(TAG, "------------- onCharacteristicWrite status: " + status);
         }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt,
+                                      BluetoothGattDescriptor descriptor,
+                                      int status) {
+            isBusy = false;
+            Log.d(TAG, "------------- onDescriptorWrite status: " + status);
+        }
     };
 
     private void broadcastUpdate(final String action) {
@@ -130,11 +140,11 @@ public class BluetoothLeService extends Service {
         final byte[] data = characteristic.getValue();
         if (data != null && data.length > 0) {
             //We have to decompress the EEG-Data here. This is done by TraumschreiberService.decompress();
-            int[] data_int = TraumschreiberService.decompress(data, newTraumschreiber);
-            final StringBuilder stringBuilder = new StringBuilder(data.length);
-            intent.putExtra(EXTRA_DATA, data_int);
+            int characteristicNumber = Integer.parseInt(characteristic.getUuid().toString().substring(7,8));
+            dataDecoded = mTraumschreiberService.decompress(data, newTraumschreiber, characteristicNumber);
+            if(dataDecoded != null) intent.putExtra(EXTRA_DATA, dataDecoded);
         }
-        sendBroadcast(intent);
+        if(dataDecoded != null) sendBroadcast(intent);
     }
 
     @Override
@@ -269,6 +279,7 @@ public class BluetoothLeService extends Service {
         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                 UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
         if (descriptor != null) {
+            isBusy = true; // Changes once onDescriptorWrite callback is called
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             mBluetoothGatt.writeDescriptor(descriptor);
         }
@@ -306,5 +317,8 @@ public class BluetoothLeService extends Service {
         }
     }
 
-
+    public void setNewTraumschreiber(boolean newDevice){
+        Log.d(TAG, "Set newTraumschreiber called");
+        newTraumschreiber = newDevice;
+    }
 }
