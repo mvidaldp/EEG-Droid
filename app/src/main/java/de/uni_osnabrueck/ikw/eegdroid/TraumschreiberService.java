@@ -112,7 +112,7 @@ public class TraumschreiberService {
 
     /***
      * Converts bytes to ints and adds the values of the current data to the previous data.
-     * @param  bytes
+     * @param  deltaBytes
      * @return int[] data
      */
     public int[] decodeDpcm(byte[] deltaBytes){

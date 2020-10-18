@@ -96,3 +96,4 @@ Thumbs.db
 
 # ignore idea and gradle folders
 .idea
+/app/build/outputs/apk/debug/

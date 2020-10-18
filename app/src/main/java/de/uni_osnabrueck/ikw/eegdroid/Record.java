@@ -95,6 +95,7 @@ public class Record extends AppCompatActivity {
     private boolean mNewDevice;
     private String mDeviceAddress;
     private BluetoothLeService mBluetoothLeService;
+    private String serviceUuid = "00000ee6-0000-1000-8000-00805f9b34fb";
     private ArrayList<BluetoothGattCharacteristic> notifyingCharacteristics = new ArrayList<>();
     private ArrayList<String> notifyingUUIDs = new ArrayList<String>() {
         {
@@ -269,7 +270,7 @@ public class Record extends AppCompatActivity {
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
                 data_cnt = 0;
-                readGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
+                discoverCharacteristics(mBluetoothLeService.getSupportedGattServices());
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action) && deviceConnected) {
                 data_cnt++;
                 if (!timerRunning) startTimer();
@@ -718,19 +719,15 @@ public class Record extends AppCompatActivity {
     }
 
     // Discovers services and characteristics
-    private void readGattCharacteristic(List<BluetoothGattService> gattServices) {
+    private void discoverCharacteristics(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
-        String uuid;
         String charUuid;
+        List<BluetoothGattCharacteristic> gattCharacteristics;
         // Loops through available GATT Services.
         for (BluetoothGattService gattService : gattServices) {
-            uuid = gattService.getUuid().toString();
-
-            // If we find the right service..
-            if (uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb")) {
-                List<BluetoothGattCharacteristic> gattCharacteristics =
-                        gattService.getCharacteristics();
-                // Loop through all characteristics of the service
+            // If we find the right service
+            if (serviceUuid.equals( gattService.getUuid().toString() )) {
+                gattCharacteristics = gattService.getCharacteristics();
                 for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                     charUuid = gattCharacteristic.getUuid().toString();
                     // If the characteristic is a notifying characteristic
