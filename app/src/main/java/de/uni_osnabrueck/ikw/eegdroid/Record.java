@@ -2,6 +2,7 @@ package de.uni_osnabrueck.ikw.eegdroid;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -18,7 +19,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -35,13 +35,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.arch.core.internal.FastSafeIterableMap;
 import androidx.core.content.ContextCompat;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
-import com.github.mikephil.charting.data.DataSet;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -104,6 +104,10 @@ public class Record extends AppCompatActivity {
             add("0000ee62-0000-1000-8000-00805f9b34fb");
         }
     };
+    private BluetoothGattCharacteristic mNotifyCharacteristic;
+    private BluetoothGattCharacteristic configCharacteristic;
+    private String configCharacteristicUuid = "0000ecc0-0000-1000-8000-00805f9b34fb";
+
     private ArrayList<Integer> pkgIDs = new ArrayList<>();
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -126,10 +130,19 @@ public class Record extends AppCompatActivity {
             if (mBluetoothLeService != null) mBluetoothLeService = null;
         }
     };
-    private BluetoothGattCharacteristic mNotifyCharacteristic;
-    private boolean recording = false;
+    /* Configurable Traumschreiber Parameters */
+    // TODO: REMEMBER TO NOT LEAVE SELECTED GAIN LIKE THIS
     private boolean notifying = false;
-    private String selected_gain;
+    private String selectedGain = "1";
+    private byte selectedGainB = 0b00000000;
+    private boolean generateDummy = false;
+    private byte generateDummyB = (byte) 0b00100000;
+    private boolean halfDummy = false;
+    private byte halfDummyB = (byte) 0b00000000;
+    private int selectedScale;
+    private byte selectedScaleB = 0b00000000;
+
+    private boolean recording = false;
     private float res_time;
     private float res_freq;
     private int cnt = 0;
@@ -311,70 +324,67 @@ public class Record extends AppCompatActivity {
         return intentFilter;
     }
 
+    // TODO: REMEMBER TO BRING BACK THIS FUNCTION TO ITS ORIGINAL STATE AND PURPOSE
     private void setGainSpinner() {
         int gains_set = mNewDevice ? R.array.gains_new : R.array.gains_old;
         gain_spinner.setAdapter(new ArrayAdapter<>(getApplicationContext(),
                 android.R.layout.simple_spinner_dropdown_item,
                 getResources().getStringArray(gains_set)));
-        int gain_default = mNewDevice ? 0 : 1;
+        int gain_default = 1;
         gain_spinner.setSelection(gain_default);
         gain_spinner.setEnabled(true);
-        selected_gain = gain_spinner.getSelectedItem().toString();
+        //selectedGain = gain_spinner.getSelectedItem().toString();
         gain_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (!mNewDevice) {
-                    switch (position) {
-                        case 0:
-                            selected_gain = "0.5";
-                            break;
-                        case 2:
-                            selected_gain = "2";
-                            break;
-                        case 3:
-                            selected_gain = "4";
-                            break;
-                        case 4:
-                            selected_gain = "8";
-                            break;
-                        case 5:
-                            selected_gain = "16";
-                            break;
-                        case 6:
-                            selected_gain = "32";
-                            break;
-                        case 7:
-                            selected_gain = "64";
-                            break;
-                        default:
-                            selected_gain = "1";
-                    }
-                } else {
-                    switch (position) {
-                        case 1:
-                            selected_gain = "2";
-                            break;
-                        case 2:
-                            selected_gain = "4";
-                            break;
-                        case 3:
-                            selected_gain = "8";
-                            break;
-                        default:
-                            selected_gain = "1";
-                    }
-                }
-                if (deviceConnected)
-                    writeGattCharacteristic(mBluetoothLeService.getSupportedGattServices());
+                int parsed = Integer.parseInt(gain_spinner.getSelectedItem().toString());
+                selectedScaleB = (byte) (parsed << 4);
+                Log.i(TAG, "SELECTED SCALE: " + Integer.toString(selectedScaleB));
+                TraumschreiberService.setSignalScaling(parsed);
+                /*switch (position) {
+                    case 1:
+                        selectedGain = "2";
+                        selectedGainB = (byte) 0b01000000;
+                        break;
+                    case 2:
+                        selectedGain = "4";
+                        selectedGainB = (byte) 0b10000000;
+                        break;
+                    case 3:
+                        selectedGain = "8";
+                        selectedGainB = (byte) 0b11000000;
+                        break;
+                    default:
+                        selectedGain = "1";
+                        selectedGainB = (byte) 0b00000000;
+                }*/
+                if (configCharacteristic != null) updateConfiguration();
             }
-
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 // sometimes you need nothing here
             }
         });
     }
+    private void updateConfiguration(){
+        // Declare bytearray
+        byte[] configBytes = new byte[3];
 
+        // Concatenate binary strings
+        configBytes[0] = (byte) (selectedGainB | generateDummyB | halfDummyB);
+        configBytes[1] = selectedScaleB;
+        configBytes[2] = 0b00000000;
+
+
+        // write to characteristic
+        int WRITECHAR_DELAY = 100;
+        final int TOGGLE_DELAY = 500;
+        handler.postDelayed(() -> {
+            configCharacteristic.setValue(configBytes);
+            mBluetoothLeService.writeCharacteristic(configCharacteristic);
+            //handler.postDelayed(this::toggleNotifying, TOGGLE_DELAY);
+        }, WRITECHAR_DELAY);
+    }
     private void initializeTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
@@ -630,94 +640,6 @@ public class Record extends AppCompatActivity {
         }
     }
 
-    // TODO: Make this write to the saved config characteristic
-    private void writeGattCharacteristic(List<BluetoothGattService> gattServices) {
-        if (gattServices == null) return;
-        String uuid;
-        String charUuid;
-        toggleNotifying();
-        for (BluetoothGattService gattService : gattServices) {
-            uuid = gattService.getUuid().toString();
-
-            if (((!mNewDevice && uuid.equals("05bbfe57-2f19-ab84-c448-6769fe64d994")) ||
-                    (mNewDevice && uuid.equals("00000ee6-0000-1000-8000-00805f9b34fb")))) {
-                List<BluetoothGattCharacteristic> gattCharacteristics =
-                        gattService.getCharacteristics();
-
-                // Loops through available Characteristics.
-                for (final BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
-                    charUuid = gattCharacteristic.getUuid().toString();
-                    if ((!mNewDevice && charUuid.equals("fcbea85a-4d87-18a2-2141-0d8d2437c0a4")) ||
-                            (mNewDevice && charUuid.equals("0000ecc0-0000-1000-8000-00805f9b34fb"))) {
-                        final int charaProp = gattCharacteristic.getProperties();
-                        if (((charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE) |
-                                (charaProp & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) > 0) {
-                            /*  gains:\
-                                old -> {0.5:0b111, 1:0b000, 2:0b001, 4:0b010, 8:0b011, 16:0b100, 32:0b101, 64:0b110}
-                                new -> {1:0b00, 2:0b01, 4:0b10, 8:0b11}
-                             */
-                            final byte[] newValue;
-                            if (!mNewDevice) {
-                                newValue = new byte[6];
-                                switch (selected_gain) {
-                                    case "0.5":
-                                        newValue[4] = 0b111;
-                                        break;
-                                    case "1":
-                                        newValue[4] = 0b000;
-                                        break;
-                                    case "2":
-                                        newValue[4] = 0b001;
-                                        break;
-                                    case "4":
-                                        newValue[4] = 0b010;
-                                        break;
-                                    case "8":
-                                        newValue[4] = 0b011;
-                                        break;
-                                    case "16":
-                                        newValue[4] = 0b100;
-                                        break;
-                                    case "32":
-                                        newValue[4] = 0b101;
-                                        break;
-                                    case "64":
-                                        newValue[4] = 0b110;
-                                        break;
-                                }
-                            } else {
-                                newValue = new byte[1];
-                                // set bits 3 and 4 to 1 for real + dummy data: 0b00xx0000 -> x to 1
-                                // set only bit 3 to 1 for dummy data only:     0b00x00000 -> x to 1
-                                switch (selected_gain) {
-                                    case "1":
-                                        newValue[0] = (byte) 0b00000000;
-                                        break;
-                                    case "2":
-                                        newValue[0] = (byte) 0b01000000;
-                                        break;
-                                    case "4":
-                                        newValue[0] = (byte) 0b10000000;
-                                        break;
-                                    case "8":
-                                        newValue[0] = (byte) 0b11000000;
-                                        break;
-                                }
-                            }
-                            int WRITECHAR_DELAY = 500;
-                            final int TOGGLE_DELAY = 500;
-                            handler.postDelayed(() -> {
-                                gattCharacteristic.setValue(newValue);
-                                mBluetoothLeService.writeCharacteristic(gattCharacteristic);
-                                handler.postDelayed(this::toggleNotifying, TOGGLE_DELAY);
-                            }, WRITECHAR_DELAY);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // Discovers services and characteristics
     private void discoverCharacteristics(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
@@ -735,6 +657,8 @@ public class Record extends AppCompatActivity {
                             notifyingCharacteristics.add(gattCharacteristic);
                             mBluetoothLeService.setCharacteristicNotification(gattCharacteristic, false);
                             mNotifyCharacteristic = gattCharacteristic; // store the last one here.
+                    } else if (configCharacteristicUuid.contains(charUuid)){
+                        configCharacteristic = gattCharacteristic;
                     }
                 }
                 prepareNotifications();
@@ -778,7 +702,7 @@ public class Record extends AppCompatActivity {
     private List<Float> transData(int[] data) {
         // Conversion formula (old): V_in = X * 1.65V / (1000 * GAIN * PRECISION)
         // Conversion formula (new): V_in = X * (298 / (1000 * gain))
-        float gain = Float.parseFloat(selected_gain);
+        float gain = Float.parseFloat(selectedGain);
         List<Float> data_trans = new ArrayList<>();
         if (!mNewDevice) { // old model
             pkgIDs.add((int) data_cnt); // store pkg ID
@@ -787,7 +711,7 @@ public class Record extends AppCompatActivity {
             float denominator = gain * precision;
             for (int datapoint : data) data_trans.add((datapoint * numerator) / denominator);
         } else {
-            for (float datapoint : data) data_trans.add(datapoint*298/1000000);
+            for (float datapoint : data) data_trans.add(datapoint * 298 / (10^6) / gain);
         }
         return data_trans;
     }

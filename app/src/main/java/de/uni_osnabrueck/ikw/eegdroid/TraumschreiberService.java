@@ -9,13 +9,14 @@ import java.util.UUID;
 public class TraumschreiberService {
     public final static String DEVICE_NAME = "traumschreiber";
     private final static String TAG = "TraumschreiberService";
+    private static int signalBitShift = 6;
+    private static int signalScale = 298/1000000;
 
     public String mTraumschreiberDeviceAddress;
     private byte[] dpcmBuffer = new byte[30];
     private byte[] dpcmBuffer2 = new byte[30];
     private int[] decodedSignal = new int[24];
     private boolean characteristic0Ready = false;
-    private int signalBitShift = 6;
 
     public TraumschreiberService() {
 
@@ -24,8 +25,6 @@ public class TraumschreiberService {
     public TraumschreiberService(String traumschreiberDeviceAddress) {
         this.mTraumschreiberDeviceAddress = traumschreiberDeviceAddress;
     }
-
-
     public static boolean isTraumschreiberDevice(String bluetoothDeviceName) {
         return bluetoothDeviceName.toLowerCase().contains(DEVICE_NAME);
     }
@@ -33,10 +32,9 @@ public class TraumschreiberService {
         return bluetoothDeviceName.startsWith("T");
     }
 
-    public void setSignalScaling(int newShift){
+    public static void setSignalScaling(int newShift){
         signalBitShift = newShift;
     }
-
 
     /***
      * decompress takes a bytearray data_bytes and converts it to integers, according to the way the Traumschreiber transmits the data via bluetooth
