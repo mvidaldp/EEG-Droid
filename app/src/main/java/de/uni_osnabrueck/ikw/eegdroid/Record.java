@@ -136,7 +136,7 @@ public class Record extends AppCompatActivity {
     private String selectedGain = "1";
     private byte selectedGainB = 0b00000000;
     private boolean generateDummy = false;
-    private byte generateDummyB = (byte) 0b00100000;
+    private byte generateDummyB = (byte) 0b00000000;
     private boolean halfDummy = false;
     private byte halfDummyB = (byte) 0b00000000;
     private int selectedScale;
@@ -899,8 +899,9 @@ public class Record extends AppCompatActivity {
         }
 
         // include this part to make the axis symmetric (0 always visible in the middle)
-        if (max < min * -1) max = min * -1;
+        /*if (max < min * -1) max = min * -1;
         min = max * -1;
+        */
 
         int range = max - min;
         max += 0.1 * range;
